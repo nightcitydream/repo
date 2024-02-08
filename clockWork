@@ -1,0 +1,108 @@
+#include <Arduino.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+int state;
+String show;
+String rec;
+String zero = "0:00:000";
+
+unsigned long start = 0;
+unsigned long count = 0;
+unsigned long sec = 0;
+unsigned long tenSec = 0;
+unsigned long minu = 0;
+unsigned long milli = 0;
+int reCount;
+int reRec;
+int swSp = D5;
+int swRec = D6;
+void setup()
+{
+  Serial.begin(115200);
+  lcd.init();
+  lcd.backlight();
+  start = 0;
+  rec = zero;
+}
+
+void loop()
+{
+  if (state == 0)
+  {
+    lcd.setCursor(0, 0);
+    lcd.print("Live|");
+    lcd.setCursor(5, 0);
+    lcd.print("0:00:000");
+    lcd.setCursor(0, 1);
+    lcd.print("Rec |");
+    lcd.setCursor(5, 1);
+    lcd.print(rec);
+    Serial.println(" State 0");
+    if (digitalRead(swSp) == 1)
+    {
+      start = millis();
+      state = 1;
+      while (digitalRead(D5) == 1)
+        ;
+    }
+    if (digitalRead(swRec) == 1)
+    {
+      rec = zero;
+      lcd.setCursor(5, 1);
+      lcd.print(rec);
+    }
+  }
+  if (state == 1)
+  {
+
+    reCount = 0;
+    Serial.println(" State 1");
+    count = millis() - start;
+    minu = (count / 60000) % 60; 
+    tenSec = (count / 10000) % 6;
+    sec = (count / 1000) % 10;
+    milli = count % 1000;
+    show = String(minu) + ":" + String(tenSec) + String(sec) + ":" + milli;
+    lcd.setCursor(0, 0);
+    lcd.print("Live|");
+    lcd.setCursor(0, 1);
+    lcd.print("Rec |");
+    lcd.setCursor(5, 0);
+    lcd.print(show);
+    lcd.setCursor(5, 1);
+    lcd.print(rec);
+    if (digitalRead(swSp) == 1)
+    {
+      state = 2;
+      while (digitalRead(swSp) == 1)
+        ;
+    }
+  }
+  if (state == 2)
+  {
+    start = millis() - count;
+    if (digitalRead(swSp) == 1)
+    {
+      state = 1;
+
+      while (digitalRead(swSp) == 1)
+      {
+        delay(100);
+        reRec++;
+        if (reRec > 5)
+        {
+          delay(100);
+          reCount++;
+          if (reCount > 5)
+          {
+            rec = show;
+            lcd.setCursor(5, 1);
+            lcd.print(rec);
+            state = 0;
+          }
+        }
+      };
+    }
+  }
+}
